@@ -2,8 +2,8 @@
 
 ![Bevel OS desktop: the System window, the keyboard shortcut list and the Alt+Tab switcher](docs/img/cover.png)
 
-A small graphical desktop operating system for one ESP32-S3 board, drawing a 640x480 VGA picture
-in 64 colours through six resistors. It has overlapping windows, a taskbar, a file manager, a text
+A small graphical desktop operating system for one ESP32-S3 board, exposing a 640x480 desktop
+remotely over Wi-Fi in 64 colours. It has overlapping windows, a taskbar, a file manager, a text
 editor, a picture viewer, a terminal, Wi-Fi with a text web browser, and apps loaded from its own
 drive as separate ELF files, including Snake and Doom.
 
@@ -98,6 +98,9 @@ Measured on the board (details in [docs/PERF.md](docs/PERF.md)):
 
 ### VGA wiring (resistor DAC)
 
+The remote-desktop build does not require this wiring or an LCD/VGA monitor; the section is kept
+as historical hardware documentation for the original board bring-up.
+
 Each colour channel uses two GPIOs joined after their resistors, a 2-bit DAC into the monitor's
 75 Ω input: about 0, 0.2, 0.45 and 0.65 V. Three channels of two bits give 64 colours (RGB222).
 
@@ -148,11 +151,10 @@ Bevel OS runs on ESP-IDF 5.5.3 and FreeRTOS, which provide the boot chain, USB h
 Wi-Fi/TLS and the scheduler. Everything visible is written from scratch (about 11 000 lines of
 C and a little assembly). The full description is in [docs/OS-REPORT.md](docs/OS-REPORT.md).
 
-- **VGA scan-out** (`main/vga.c`, `main/pie.S`): the RGB LCD peripheral runs in no-framebuffer
-  mode with two 10-line bounce buffers in internal RAM. Its interrupt calls a fill routine that
-  copies the next lines from the 300 KB framebuffer in PSRAM (a 128-bit SIMD loop when the buffer
-  is aligned), preloads the following lines into the cache, draws the mouse pointer on top as a
-  sprite, and records where the beam is. The pointer never touches the framebuffer.
+- **Remote display** (`main/remote.c`, `tools/bevel_remote.py`): the 300 KB PSRAM framebuffer is
+  sent as an RGB222 RLE keyframe to one Wi-Fi client whenever the compositor paints. The client
+  sends keyboard and mouse events back into the same input queue used by USB HID. The protocol is
+  intentionally unauthenticated; use a trusted LAN or an external SSH tunnel.
 - **Compositor** (`main/comp.c`, `main/gfx.c`): nothing draws straight into PSRAM, which is the
   bottleneck (about 35 MB/s writes, shared with the display). Damage is tracked as rectangles,
   painted strip by strip in a 20 KB internal-RAM buffer, then copied to PSRAM once, just behind
@@ -161,9 +163,8 @@ C and a little assembly). The full description is in [docs/OS-REPORT.md](docs/OS
 - **Window manager and toolkit** (`main/wm.c`, `main/ui.c`, `main/menu.c`, `main/dlg.c`,
   `main/shell.c`): z-order, focus, keyboard navigation, buttons, lists, text fields, sliders,
   menus, dialogs, the taskbar and desktop. No LVGL.
-- **Cores:** the scan-out interrupt and the GUI task share core 1 (moving the interrupt to the
-  other core broke beam racing; see [docs/PERF.md](docs/PERF.md)). USB, the drive, the serial
-  channel and loaded apps run on core 0.
+- **Cores:** the GUI task runs on core 1. USB, Wi-Fi, the drive, the serial channel and loaded
+  apps run on core 0.
 - **Input** (`main/usb_input.c`, `main/input.c`): USB host HID on GPIO19/20 with a report
   descriptor parser, so boot keyboards, relative mice and absolute pointers all work. Hub support
   is enabled in the USB host stack, and a watchdog revives the port after a failed enumeration.
@@ -233,6 +234,18 @@ python3 tools/bv.py quit                             # release the port before f
 The helper scripts (`tools/flash.sh`, `tools/build_apps.sh`, `tools/build_doom.sh`, ...) are zsh
 scripts written for the development Mac: they source ESP-IDF from `~/esp/esp-idf` and use the
 BSD `stat -f`. On Linux, adjust those two things.
+
+## Remote desktop
+
+After Wi-Fi credentials are saved on the board, start the reference client from a laptop:
+
+```sh
+python3 tools/bevel_remote.py ESP_IP
+```
+
+The service listens on TCP port 2323 and accepts one client. It is a small direct TCP protocol,
+not an SSH server and not a VNC/RDP implementation. Keep it on a trusted network, or forward
+port 2323 through an SSH-capable host on the same LAN.
 
 ## Apps and files
 

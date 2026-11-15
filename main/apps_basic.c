@@ -5,7 +5,6 @@
 #include "wm.h"
 #include "apps.h"
 #include "os.h"
-#include "vga.h"
 #include "comp.h"
 #include "esp_heap_caps.h"
 #include "esp_chip_info.h"
@@ -16,7 +15,7 @@
 
 static window_t *s_sys;
 static int s_sys_timer;
-static vga_stats_t s_sys_vga;
+static comp_stats_t s_sys_comp;
 
 static void sys_paint(widget_t *w, gfx_t *g)
 {
@@ -42,11 +41,11 @@ static void sys_paint(widget_t *w, gfx_t *g)
         (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), (unsigned)(esp_psram_get_size() / 1024));
     labels[n] = "Flash:"; snprintf(vals[n++], 64, "%u MB", (unsigned)(flash >> 20));
     labels[n] = "Drive:"; os_sd_summary(vals[n++], 64);
-    labels[n] = "Display:"; snprintf(vals[n++], 64, "640 x 480, 64 colours, 60 Hz VGA");
+    labels[n] = "Display:"; snprintf(vals[n++], 64, "640 x 480, 64 colours, Wi-Fi remote");
     labels[n] = "Uptime:"; snprintf(vals[n++], 64, "%u:%02u:%02u", (unsigned)(up / 3600), (unsigned)(up / 60 % 60), (unsigned)(up % 60));
     labels[n] = "Screen updates:"; snprintf(vals[n++], 64, "%u per second", (unsigned)wm_fps());
-    labels[n] = "Scan-out:"; snprintf(vals[n++], 64, "%u.%u us per fill, slack %d us, %u late",
-        (unsigned)(s_sys_vga.isr_avg_us10 / 10), (unsigned)(s_sys_vga.isr_avg_us10 % 10), (int)s_sys_vga.slack_min_us, (unsigned)s_sys_vga.late);
+    labels[n] = "Remote updates:"; snprintf(vals[n++], 64, "%u flushes, %u pixels",
+        (unsigned)s_sys_comp.flushes, (unsigned)s_sys_comp.pixels);
     for (int i = 0; i < n; i++, y += 16) {
         gfx_text(g, 4, y, labels[i], -1, FONT_UI, C_TEXT);
         gfx_text(g, 124, y, vals[i], -1, FONT_UI, C_NAVY);
@@ -58,7 +57,7 @@ static const canvas_ops_t sys_ops = {sys_paint, NULL, NULL};
 static void sys_tick(void *arg)
 {
     if (!s_sys) return;
-    vga_get_stats(&s_sys_vga, true);
+    comp_get_stats(&s_sys_comp, true);
     for (widget_t *w = s_sys->widgets; w; w = w->next) if (!w->text) ui_invalidate(w);
 }
 static void sys_destroy(window_t *w) { timer_del(s_sys_timer); s_sys = NULL; }
@@ -75,7 +74,7 @@ void app_system(const char *arg)
     w->def_btn = ok; w->cancel_btn = ok;
     w->on_destroy = sys_destroy;
     s_sys = w;
-    vga_get_stats(&s_sys_vga, false);
+    comp_get_stats(&s_sys_comp, false);
     s_sys_timer = timer_add(1000, true, sys_tick, NULL);
     wm_show(w);
 }

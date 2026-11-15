@@ -18,11 +18,11 @@ typedef struct {
     uint32_t pixels;      // pixels written to PSRAM
     uint32_t render_us;   // time spent painting strips (internal RAM)
     uint32_t copy_us;     // time spent copying strips to PSRAM
-    uint32_t wait_us;     // time spent waiting for the beam
+    uint32_t wait_us;       // retained for compatibility; zero for headless output
     uint32_t max_flush_us;// longest single comp_flush()
 } comp_stats_t;
 void comp_get_stats(comp_stats_t *out, bool reset);
 
 // Tuning knobs for benchmarks.
-extern int comp_beam_race;   // 1 = wait for the scan-out (tear-free), 0 = write immediately
+extern int comp_beam_race;   // retained benchmark switch; headless output never waits
 extern int comp_copy_mode;   // 0 = memcpy, 1 = PIE

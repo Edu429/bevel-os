@@ -19,6 +19,7 @@
 #include "apps.h"
 #include "fsutil.h"
 #include "net.h"
+#include "remote.h"
 #include "usb/usb_host.h"
 #include "soc/usb_dwc_struct.h"
 #include "soc/gpio_reg.h"
@@ -117,24 +118,14 @@ bool os_serial_command(const char *cmd, char *arg)
     return false;
 }
 
-static void vga_start(void *arg)
-{
-    ESP_ERROR_CHECK(vga_init());
-    if (arg) { xTaskNotifyGive((TaskHandle_t)arg); vTaskDelete(NULL); }
-}
-
 static void gui_task(void *unused)
 {
-    if (VGA_ISR_CORE == xPortGetCoreID()) vga_start(NULL);
-    else {
-        // the scan-out interrupt lives on whichever core starts the panel
-        xTaskCreatePinnedToCore(vga_start, "vga_init", 4096, xTaskGetCurrentTaskHandle(), 10, NULL, VGA_ISR_CORE);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    }
+    ESP_ERROR_CHECK(vga_init());
     storage_init();
     settings_load();
     wm_init();
     app_loader_start();
+    remote_start();
     net_boot();
     vga_cursor_show(true);
     wm_pump(0);

@@ -9,11 +9,10 @@
 #define OS_NAME "Bevel OS"
 #define OS_VERSION "1.0"
 
-// Which core runs what. The GUI task (window manager, compositor, built-in apps) lives on
-// GUI_CORE; USB, SD card, serial and loaded apps live on the other one.
+// Which core runs what. The GUI task and framebuffer live on GUI_CORE; USB, Wi-Fi, serial and
+// loaded apps live on the other one.
 #define GUI_CORE 1
 #define SYS_CORE 0
-#define VGA_ISR_CORE 1
 
 // serial.c
 void serial_start(void);

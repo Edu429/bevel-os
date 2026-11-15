@@ -149,8 +149,9 @@ static void boot_task(void *arg)
 void net_boot(void)
 {
     static bool tried;
-    if (tried || s_state != NET_OFF) return;
+    if (tried) return;
     tried = true;
+    if (!net_start()) return;
     if (fs_exists(WIFI_FILE)) xTaskCreatePinnedToCore(boot_task, "net_boot", 4096, NULL, 2, NULL, SYS_CORE);
 }
 

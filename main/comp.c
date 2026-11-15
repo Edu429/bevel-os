@@ -2,12 +2,11 @@
 //
 // Nothing ever draws straight into the PSRAM framebuffer. Damage is collected as a short list of
 // rectangles; each one is painted strip by strip into a 20 KB scratch buffer in internal RAM
-// (fast, and overdraw there is cheap), then copied to PSRAM exactly once, timed so the scan-out
-// is not reading those rows ("beam racing"). That gives flicker-free and tear-free updates with a
-// single framebuffer and the minimum possible PSRAM traffic.
+// (fast, and overdraw there is cheap), then copied to PSRAM exactly once.
 #include <string.h>
 #include "comp.h"
 #include "vga.h"
+#include "remote.h"
 #include "esp_attr.h"
 #include "esp_cpu.h"
 
@@ -22,7 +21,7 @@ static comp_paint_fn s_paint;
 static comp_stats_t s_stats;
 static uint32_t s_ns_per_px = 40; // moving estimate of render+copy cost, for the beam race
 
-int comp_beam_race = 1;
+int comp_beam_race = 0;
 int comp_copy_mode = 1;
 
 void comp_init(comp_paint_fn paint) { s_paint = paint; s_ndirty = 0; }
@@ -141,6 +140,7 @@ int IRAM_ATTR comp_flush(void)
     s_stats.copy_us += c_copy / CPU_MHZ;
     s_stats.wait_us += us_wait;
     if (total_us > s_stats.max_flush_us) s_stats.max_flush_us = total_us;
+    remote_frame_ready();
     return total_px;
 }
 
