@@ -2,6 +2,7 @@
 //
 // The protocol is intentionally small and unauthenticated: WPA2/WPA3 or an external SSH tunnel
 // must provide network security. One client receives RGB222 RLE keyframes and may inject input.
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 #include "freertos/task.h"
 #include "esp_heap_caps.h"
 #include "input.h"
+#include "net.h"
 #include "os.h"
 #include "remote.h"
 #include "vga.h"
@@ -36,10 +38,14 @@ static bool send_all(int fd, const void *data, size_t n)
 {
     const uint8_t *p = data;
     while (n) {
-        int r = send(fd, p, n, 0);
-        if (r <= 0) return false;
-        p += r;
-        n -= (size_t)r;
+        int r = send(fd, p, n, MSG_DONTWAIT);
+        if (r > 0) {
+            p += r;
+            n -= (size_t)r;
+            continue;
+        }
+        if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return false;
+        return false;
     }
     return true;
 }

@@ -156,10 +156,9 @@ C and a little assembly). The full description is in [docs/OS-REPORT.md](docs/OS
   sends keyboard and mouse events back into the same input queue used by USB HID. The protocol is
   intentionally unauthenticated; use a trusted LAN or an external SSH tunnel.
 - **Compositor** (`main/comp.c`, `main/gfx.c`): nothing draws straight into PSRAM, which is the
-  bottleneck (about 35 MB/s writes, shared with the display). Damage is tracked as rectangles,
+  bottleneck (about 35 MB/s writes). Damage is tracked as rectangles,
   painted strip by strip in a 20 KB internal-RAM buffer, then copied to PSRAM once, just behind
-  the beam. That gives tear-free updates with a single framebuffer; it also turned out cheaper
-  than not waiting, because the scan-out has just pulled those rows into the cache.
+  the desktop buffer. Remote full-frame updates are sent after a successful compositor flush.
 - **Window manager and toolkit** (`main/wm.c`, `main/ui.c`, `main/menu.c`, `main/dlg.c`,
   `main/shell.c`): z-order, focus, keyboard navigation, buttons, lists, text fields, sliders,
   menus, dialogs, the taskbar and desktop. No LVGL.

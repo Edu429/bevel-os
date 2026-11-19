@@ -3,11 +3,11 @@ import struct
 WIDTH = 640
 HEIGHT = 480
 
-
 def encode_input(kind, payload=b""):
-    if len(payload) > 32:
+    data = bytes((kind,)) + payload
+    if len(data) > 32:
         raise ValueError("input payload too large")
-    return b"BV" + bytes((1, 2)) + struct.pack("<H", len(payload)) + payload
+    return b"BV" + bytes((1, 2)) + struct.pack("<H", len(data)) + data
 
 
 def decode_frame(header, payload):

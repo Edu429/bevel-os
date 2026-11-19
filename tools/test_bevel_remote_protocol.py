@@ -6,7 +6,7 @@ from bevel_remote_protocol import decode_frame, encode_input
 
 class ProtocolTests(unittest.TestCase):
     def test_input_frame(self):
-        self.assertEqual(encode_input(1, b"\x04\x01"), b"BV\x01\x02\x02\x00\x04\x01")
+        self.assertEqual(encode_input(1, b"\x04\x01"), b"BV\x01\x02\x03\x00\x01\x04\x01")
 
     def test_decode_rle(self):
         header = b"BV\x01\x01" + struct.pack("<HHI", 2, 2, 4)

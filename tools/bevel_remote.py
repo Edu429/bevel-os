@@ -45,6 +45,8 @@ def main():
 
     def key(event, down):
         usage = KEY_USAGE.get(event.keysym, 0)
+        if not usage and event.char:
+            usage = KEY_USAGE.get(event.char.lower(), 0)
         if not usage:
             return
         send(1, bytes((usage, down)))
